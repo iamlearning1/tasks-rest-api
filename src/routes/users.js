@@ -1,6 +1,7 @@
 const express = require('express');
 
 const User = require('../models/user');
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -8,21 +9,24 @@ router.post('/', async (req, res) => {
   const user = new User(req.body);
   try {
     const result = await user.save();
-    return res.status(201).send(result);
+    const token = await user.generateAuthToken();
+    return res.status(201).send({ result, token });
   } catch (err) {
     return res.status(400).send(err);
   }
 });
 
-router.get('/', async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
-    const result = await User.find({});
-    if (result.length > 0) return res.send(result);
-    return res.sendStatus(404);
+    const user = await User.findByCredentials(req.body.email, req.body.password);
+    const token = await user.generateAuthToken();
+    res.send({ user, token });
   } catch (err) {
-    return res.status(500).send(err);
+    res.sendStatus(400);
   }
 });
+
+router.get('/me', authMiddleware, async (req, res) => res.send(req.user));
 
 router.get('/:id', async (req, res) => {
   const _id = req.params.id;
