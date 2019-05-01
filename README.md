@@ -1,6 +1,4 @@
-# tasks-rest-api
-
-Tasks Rest API
+# Tasks Rest API
 
 Please create config folder in the root directory and set four env variables to use this application.
 
