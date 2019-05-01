@@ -4,7 +4,7 @@ const sharp = require('sharp');
 
 const User = require('../models/user');
 const authMiddleware = require('../middleware/auth');
-const { sendWelcomeEmail, sendUserDeleteEmail } = require('../emails/account');
+const { sendWelcomeEmail } = require('../emails/account');
 
 const router = express.Router();
 const upload = multer({
@@ -25,7 +25,7 @@ router.post('/', async (req, res) => {
     const result = await user.save();
     sendWelcomeEmail(user.email, user.name);
     const token = await user.generateAuthToken();
-    return res.status(201).send({ result: await result.toJSON(), token });
+    return res.status(201).send({ user: await result.toJSON(), token });
   } catch (err) {
     return res.status(400).send(err);
   }
@@ -68,7 +68,7 @@ router.patch('/me', authMiddleware, async (req, res) => {
   const allowedUpdates = ['name', 'email', 'age', 'password'];
   const isValid = updates.every(update => allowedUpdates.includes(update));
 
-  if (!isValid) return res.status(500).send({ error: 'Invalid updates' });
+  if (!isValid) return res.status(412).send({ error: 'Invalid updates' });
 
   try {
     const { user } = req;
@@ -85,7 +85,7 @@ router.patch('/me', authMiddleware, async (req, res) => {
 router.delete('/me', authMiddleware, async (req, res) => {
   try {
     await req.user.remove();
-    await sendUserDeleteEmail(req.user.email, req.user.name);
+    // await sendUserDeleteEmail(req.user.email, req.user.name);
     return res.send(await req.user.toJSON());
   } catch (err) {
     return res.status(500).send(err);
