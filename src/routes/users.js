@@ -1,12 +1,13 @@
 const express = require('express');
 const multer = require('multer');
+const sharp = require('sharp');
 
 const User = require('../models/user');
 const authMiddleware = require('../middleware/auth');
+const { sendWelcomeEmail, sendUserDeleteEmail } = require('../emails/account');
 
 const router = express.Router();
 const upload = multer({
-  dest: 'avatar',
   limits: {
     fieldSize: 1000000,
   },
@@ -22,6 +23,7 @@ router.post('/', async (req, res) => {
   const user = new User(req.body);
   try {
     const result = await user.save();
+    sendWelcomeEmail(user.email, user.name);
     const token = await user.generateAuthToken();
     return res.status(201).send({ result: await result.toJSON(), token });
   } catch (err) {
@@ -83,14 +85,45 @@ router.patch('/me', authMiddleware, async (req, res) => {
 router.delete('/me', authMiddleware, async (req, res) => {
   try {
     await req.user.remove();
+    await sendUserDeleteEmail(req.user.email, req.user.name);
     return res.send(await req.user.toJSON());
   } catch (err) {
     return res.status(500).send(err);
   }
 });
 
-router.post('/me/avatar', upload.single('avatar'), (req, res) => {
-  res.sendStatus(200);
+router.post(
+  '/me/avatar',
+  authMiddleware,
+  upload.single('avatar'),
+  async (req, res) => {
+    const buffer = await sharp(req.file.buffer)
+      .resize({ width: 250, height: 250 })
+      .png()
+      .toBuffer();
+    req.user.avatar = buffer;
+    await req.user.save();
+    return res.sendStatus(200);
+  },
+  // eslint-disable-next-line no-unused-vars
+  (error, req, res, next) => res.status(400).send({ error: error.message }),
+);
+
+router.delete('/me/avatar', authMiddleware, async (req, res) => {
+  req.user.avatar = undefined;
+  await req.user.save();
+  return res.sendStatus(200);
+});
+
+router.get('/:id/avatar', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user || !user.avatar) throw new Error('Image not Found');
+    res.set('Content-Type', 'image/png');
+    return res.send(user.avatar);
+  } catch (err) {
+    return res.sendStatus(404);
+  }
 });
 
 module.exports = router;

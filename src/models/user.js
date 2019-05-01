@@ -50,6 +50,9 @@ const userSchema = new Schema(
         },
       },
     ],
+    avatar: {
+      type: Buffer,
+    },
   },
   {
     timestamps: true,
@@ -68,18 +71,21 @@ userSchema.methods.toJSON = async function () {
 
   delete userObject.password;
   delete userObject.tokens;
+  delete userObject.avatar;
+
   return userObject;
 };
 
 userSchema.methods.generateAuthToken = async function () {
   const user = this;
-  const token = jwt.sign({ _id: user._id.toString() }, 'nodejs');
+  const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_SECRET_KEY);
   user.tokens = user.tokens.concat({ token });
   await user.save();
   return token;
 };
 
 userSchema.statics.findByCredentials = async (email, password) => {
+  // eslint-disable-next-line no-use-before-define
   const user = await User.findOne({ email });
   if (!user) throw new Error('Unable to login');
 
