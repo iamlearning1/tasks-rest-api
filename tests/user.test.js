@@ -111,3 +111,65 @@ test('Should signup a new user', async () => {
 
   expect(user.password).not.toBe('testing123');
 });
+
+test('Should not signup user with invalid name/email/password', async () => {
+  const req = request(app).post('/users');
+
+  await req
+    .send({
+      name: 'Deepak',
+      email: 'test@test.com',
+      password: 'testing123',
+    })
+    .expect(400);
+
+  await req
+    .send({
+      name: '',
+      email: 'sldl@ls.com',
+      password: 'slfsoo23o2',
+    })
+    .expect(400);
+
+  await req
+    .send({
+      name: 'test user',
+      email: 'sldl@ls.com',
+      password: 'password',
+    })
+    .expect(400);
+});
+
+test('Should not update user if unauthenticated', async () => {
+  await request(app)
+    .patch('/users/me')
+    .send({
+      name: 'another user',
+    })
+    .expect(401);
+});
+
+test('Should not update user with invalid name/email/password', async () => {
+  const req = request(app)
+    .patch('/users/me')
+    .set('Authorization', `Bearer ${userOne.tokens[0].token}`);
+
+  await req
+    .send({
+      email: 'example@test.com',
+    })
+    .expect(400);
+
+  await req
+    .send({
+      password: '123',
+    })
+    .expect(400);
+});
+
+test('Should not delete user if unauthenticated', async () => {
+  await request(app)
+    .delete('/users/me')
+    .send()
+    .expect(401);
+});

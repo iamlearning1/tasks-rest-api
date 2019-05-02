@@ -72,6 +72,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
 router.patch('/:id', authMiddleware, async (req, res) => {
   const updates = Object.keys(req.body);
+  if (!updates.length) return res.sendStatus(500);
   const allowedUpdates = ['description', 'completed'];
   const isValid = updates.every(update => allowedUpdates.includes(update));
   if (!isValid) return res.status(500).send({ error: 'Invalid updates' });
